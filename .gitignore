@@ -55,5 +55,9 @@ docs/_build/
 # PyBuilder
 target/
 
-# Twitter API credentials.
+# Twitter API credentials
 etc/twitter_api.json
+
+# Logs
+log/*
+!log/empty
