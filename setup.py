@@ -4,7 +4,7 @@ from distutils.core import setup
 setup(
     name="twitterology",
     version="0.1",
-    url="https://bitbucket.org/harius/twitterology",
+    url="https://github.com/harius/twitterology",
     description="A set of tools for mining and analyzing data from Twitter",
 
     author="Zakhar Pilipchuk",

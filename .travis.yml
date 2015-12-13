@@ -1,0 +1,10 @@
+language: python
+python:
+- '2.7'
+deploy:
+  provider: pypi
+  user: harius
+  password:
+    secure: G4hdVjUPxnsXiJnEUNSOIx3QFKAitR3P24X8mrjP9lndpPIMQaV/xTi57YfpeGvP3o3/dVhpKSnlQb9uurCFqGrPt3feQGHxKiOxC1T96ljo1xWwPSGDYXp5DYu5t/Wk30R27fSMELfnkg/Hj8CNupeBpzrPyfXkSMMIYVSuL1iXyaLA2TFBTg+q+/sT49kW1kUrrzPvKnB40IQrG5FrIYYGDphat+D3dO5gySteWkzYXSbiOz3JhvICKa48bAAfQPA4ZBslLw4Ssft5lE7j0cV/dVNKazhUMsNzIMtbUinmRvPeM4adp9Gapjr0cdzxQ0py7eRTG7+kyuLpYCL/E+MNEnWuEKEJx2XP2TJWP46gUsAQ7xfm/PGOjpjaozkpD52kBHIVl1PfYnb9Tzab60uDj6f4ZeKB4wj7VTMIRbbN0Mg/sH0c9ur54GmOitQJbkxlZwM6ynB6ZM8ddgyST9OT3alhqMU1dXk8/oXkoFtN6JtLOzwhuavmsgI+ZRCUBUX8l4IvCIry439oHtotJ9VMBmHNaD0Ttz5Ewt6HAMyGYHbowWtcyXfD5dMCIEtT9HBcr4OdKi6+8Zqe9pFHvXTTRQBKo9Xe0gefnwwhKqokF0/zU+9Z2noy6u4R02/nrZ3x87PUg/WOxQVAm4z/IU9fA5IfAImUhTie98AJQT4=
+  on:
+    branch: master
