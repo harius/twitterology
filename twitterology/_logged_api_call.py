@@ -14,10 +14,13 @@ def logged_api_call(client, api, log_file="./log/api_calls.txt", **kwargs):
         ))
 
     write_to_log("start")
+
     try:
         yield get_api(client).post(**kwargs)
     except (KeyboardInterrupt, SystemExit):
         pass
     except Exception as e:
         write_to_log(type(e).__name__)
+        raise
+
     write_to_log("end")
