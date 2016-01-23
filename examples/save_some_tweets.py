@@ -4,11 +4,11 @@ import twitterology.sources as tws
 
 if __name__ == "__main__":
     client = tw.create_stream_client()
-    raw_tweets = tws.raw_tweets("some_other_stuff_7")
+    raw_tweets = tws.raw_tweets("example_table")
 
-    with tw.logged_api_call(
-            client, "stream.statuses.filter", track="hello"
-    ) as filtered_tweets:
+    with tw.logged_api_call(client,
+                            "stream.statuses.filter",
+                            track="hello") as filtered_tweets:
         for tweet in filtered_tweets.stream():
             print tweet["text"]
             print "---"
