@@ -7,7 +7,6 @@ if __name__ == "__main__":
     session = "20160319-120837"
 
     storage = tw.sources.tweets(track=track, session=session)
-    print len(storage)
-    g = tw.user_network(storage)
+    g = tw.user_network(storage, track=track, session=session)
 
     tw.user_network_summary(g, "network.eps")

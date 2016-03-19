@@ -7,7 +7,7 @@ if __name__ == "__main__":
     client = tw.stream_client()
     storage = tw.sources.tweets(track=track)
 
-    print "Writing in table", storage.table
+    print "Writing to table", storage.table
     print "%%"
 
     tweets = client.statuses.filter.post(track=track).stream()
