@@ -1,10 +1,12 @@
+from datetime import datetime
+
 import dataset
 
 
-def raw_tweets(table_name):
-    return dataset.connect(
-        "sqlite:///db/raw_tweets.db"
-    ).get_table(
-        table_name,
-        primary_id="id_str", primary_type="String"
-    )
+def tweets(track, session=None):
+    if session is None:
+        session = "{:%Y%m%d-%H%M%S}".format(datetime.now())
+    name = "track__{}__{}".format(track, session)
+
+    database = dataset.connect("sqlite:///db/tweets.db")
+    return database.get_table(name, primary_id="id_str", primary_type="String")

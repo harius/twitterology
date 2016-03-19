@@ -1,16 +1,18 @@
 from subprocess import check_call
 
-from graph_tool.all import *
-from pyx import *
+import pyx
+from graph_tool.draw import graph_draw
+from graph_tool.stats import vertex_average, vertex_hist
+from graph_tool.clustering import local_clustering
 
 
-def network_draw(g, output):
+def user_network_summary(g, output):
     graph_draw(g, output="/tmp/graph.ps", output_size=[300, 300],
                vertex_size=2)
     check_call(["ps2epsi", "/tmp/graph.ps", "/tmp/graph.eps"])
 
-    cv = canvas.canvas()
-    cv.insert(epsfile.epsfile(0, 0, "/tmp/graph.eps"))
+    cv = pyx.canvas.canvas()
+    cv.insert(pyx.epsfile.epsfile(0, 0, "/tmp/graph.eps"))
 
     stats = [
         ["Vertices", g.num_vertices()],
@@ -21,8 +23,8 @@ def network_draw(g, output):
     for row, (key, value) in enumerate(stats):
         cv.text(0, -1 - row * 0.4, key + ": " + str(value))
 
-    degree_distrib = cv.insert(graph.graphxy(0, -8, width=8))
+    degree_distrib = cv.insert(pyx.graph.graphxy(0, -8, width=8))
     counts, bins = vertex_hist(g, "in")
-    degree_distrib.plot(graph.data.values(x=bins[1:], y=counts))
+    degree_distrib.plot(pyx.graph.data.values(x=bins[1:], y=counts))
 
     cv.writeEPSfile(output)

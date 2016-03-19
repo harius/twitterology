@@ -57,11 +57,3 @@ target/
 
 # Twitter API credentials
 etc/twitter_api.json
-
-# Logs
-log/*
-!log/empty
-
-# Databases
-db/*
-!db/raw_tweets.example.db

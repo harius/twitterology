@@ -2,15 +2,23 @@ import twitterology as tw
 
 
 if __name__ == "__main__":
-    client = tw.create_stream_client()
-    tweets = tw.sources.raw_tweets("example_table")
+    track = "hello"
 
-    with tw.logged_api_call(client,
-                            "stream.statuses.filter",
-                            track="hello") as filtered_tweets:
-        for tweet in filtered_tweets.stream():
+    client = tw.stream_client()
+    storage = tw.sources.tweets(track=track)
+
+    print "Writing in table", storage.table
+    print "%%"
+
+    tweets = client.statuses.filter.post(track=track).stream()
+    for tweet in tweets:
+        try:
             print tweet["user"]["name"]
             print tweet["text"]
+        except KeyError:
+            print tweet
+            raise
+        finally:
             print "%%"
 
-            tweets.insert(tw.prepare_for_db(tweet))
+        storage.insert(tw.dump_for_storage(tweet))
