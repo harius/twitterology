@@ -57,3 +57,6 @@ target/
 
 # Twitter API credentials
 etc/twitter_api.json
+
+# IPython's garbage
+.ipynb_checkpoints/

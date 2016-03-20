@@ -6,7 +6,7 @@ import dataset
 def tweets(track=None, session=None):
     database = dataset.connect("sqlite:///db/tweets.db")
     if track is None:
-        return database.tables
+        return [table.split("__")[1:] for table in database.tables]
 
     if session is None:
         session = "{:%Y%m%d-%H%M%S}".format(datetime.now())
