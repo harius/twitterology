@@ -9,17 +9,20 @@ from graph_tool.clustering import local_clustering
 
 def user_network_summary(g, output):
     graph_draw(g, output="/tmp/graph.ps", output_size=[300, 300],
-               vertex_size=1, vertex_fill_color="blue")
+               vertex_size=0.5, vertex_fill_color=[0.2, 0.3, 0.9, 0.7])
     check_call(["ps2epsi", "/tmp/graph.ps", "/tmp/graph.eps"])
 
     cv = pyx.canvas.canvas()
     cv.insert(pyx.epsfile.epsfile(0, 0, "/tmp/graph.eps"))
 
+    created_at = g.edge_properties["created_at"].a
+    span = "{:D MMM YYYY, HH:mm} -- {:D MMM YYYY, HH:mm}".format(
+        arrow.get(created_at.min()),
+        arrow.get(created_at.max())
+    )
     stats = [
         ["Keyword", g.graph_properties["track"]],
-        ["Since", arrow.get(g.edge_properties["created_at"].a.min())],
-        ["Till", arrow.get(g.edge_properties["created_at"].a.max())],
-        ["Dataset name", g.graph_properties["session"]],
+        ["Span", span],
         ["Vertices", g.num_vertices()],
         ["Edges", g.num_edges()],
         ["Avg. degree", float(g.num_edges()) / g.num_vertices()],
