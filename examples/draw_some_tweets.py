@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
+from sys import argv
+
 import twitterology as tw
 
 
 if __name__ == "__main__":
-    track = "hello"
-    session = "20160319-120837"
+    track, session = argv[1:3]
 
     storage = tw.sources.tweets(track=track, session=session)
     g = tw.user_network(storage, track=track, session=session)
 
-    tw.user_network_summary(g, "network.eps")
+    tw.user_network_summary(g, track)

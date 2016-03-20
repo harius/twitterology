@@ -9,7 +9,7 @@ from graph_tool.clustering import local_clustering
 
 def user_network_summary(g, output):
     graph_draw(g, output="/tmp/graph.ps", output_size=[300, 300],
-               vertex_size=2)
+               vertex_size=1, vertex_fill_color="blue")
     check_call(["ps2epsi", "/tmp/graph.ps", "/tmp/graph.eps"])
 
     cv = pyx.canvas.canvas()
@@ -28,7 +28,7 @@ def user_network_summary(g, output):
 
     shift = -1
     for key, value in stats:
-        cv.text(0, shift, key + ": " + str(value))
+        cv.text(0, shift, key + ": " + str(value).replace("#", r"\#"))
         shift -= 0.4
 
     shift -= 5

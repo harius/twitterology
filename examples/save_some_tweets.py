@@ -1,8 +1,10 @@
+from sys import argv
+
 import twitterology as tw
 
 
 if __name__ == "__main__":
-    track = "hello"
+    track = argv[1]
 
     client = tw.stream_client()
     storage = tw.sources.tweets(track=track)
