@@ -18,11 +18,11 @@ if __name__ == "__main__":
 
     while True:
         try:
-	    tweets = client.statuses.filter.post(**query).stream()
-	    for tweet in tweets:
-	        print tweet["user"]["name"]
-		print tweet["text"]
-	        print "%%"
-		storage.upsert(tw.dump_for_storage(tweet), ["id_str"])
-	except (KeyError, ChunkedEncodingError):
-	    pass
+            tweets = client.statuses.filter.post(**query).stream()
+            for tweet in tweets:
+                print tweet["user"]["name"]
+                print tweet["text"]
+                print "%%"
+                storage.upsert(tw.dump_for_storage(tweet), ["id_str"])
+        except (KeyError, ChunkedEncodingError):
+            pass
