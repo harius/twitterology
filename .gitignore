@@ -60,3 +60,7 @@ etc/twitter_api.json
 
 # IPython's garbage
 .ipynb_checkpoints/
+
+# Databases
+db/
+db/tweets.example.db
