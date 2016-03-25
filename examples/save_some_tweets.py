@@ -2,6 +2,8 @@
 #    Or: python examples/save_some_tweets.py locations '54.2,35.1,57.0,40.2'
 from sys import argv
 
+from requests.exceptions import ChunkedEncodingError
+
 import twitterology as tw
 
 
@@ -14,15 +16,13 @@ if __name__ == "__main__":
     print "Writing to table", storage.table
     print "%%"
 
-    tweets = client.statuses.filter.post(**query).stream()
-    for tweet in tweets:
+    while True:
         try:
-            print tweet["user"]["name"]
-            print tweet["text"]
-        except KeyError:
-            print tweet
-            raise
-        finally:
-            print "%%"
-
-        storage.insert(tw.dump_for_storage(tweet))
+	    tweets = client.statuses.filter.post(**query).stream()
+	    for tweet in tweets:
+	        print tweet["user"]["name"]
+		print tweet["text"]
+	        print "%%"
+		storage.upsert(tw.dump_for_storage(tweet), ["id_str"])
+	except (KeyError, ChunkedEncodingError):
+	    pass
