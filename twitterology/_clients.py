@@ -1,6 +1,14 @@
 import json
 
-from birdy.twitter import StreamClient, UserClient
+from birdy.twitter import (
+    StreamClient,
+    UserClient,
+    BirdyException as ClientException
+)
+
+
+# Slience!
+ClientException
 
 
 def stream_client(config_file="./etc/twitter_api.json"):

@@ -1,23 +1,41 @@
 # Usage: python examples/save_some_timelines track '#HelloWorld'
 from sys import argv
+from multiprocessing import Pool
 
 import twitterology as tw
 
 
-if __name__ == "__main__":
+def gather_user_timeline(user_id):
+    client = tw.user_client()
+    try:
+        timeline = client.statuses.user_timeline.get(user_id=user_id, count=50)
+        return True, [tw.dump_for_storage(tweet) for tweet in timeline.data]
+    except tw.ClientException as ex:
+        return False, str(ex)
+
+
+def main():
     query = {argv[1]: argv[2], "session": argv[3]}
 
-    client = tw.user_client()
-
     source = tw.sources.tweets(**query)
+    user_ids = [row["user__id"] for row in source.distinct("user__id")]
+
     storage = tw.sources.timelines(source=source.table.name)
+    pool = Pool(4)
 
-    for row in source:
-        print row["user__id"]
+    results = pool.imap_unordered(gather_user_timeline, user_ids)
+    for index, (is_success, data) in enumerate(results, start=1):
+        print "[", index, "/", len(user_ids), "]"
 
-        timeline = client.statuses.user_timeline.get(
-            user_id=row["user__id"],
-            count=50
-        )
-        for tweet in timeline.data:
-            storage.upsert(tw.dump_for_storage(tweet), ["id_str"])
+        if is_success:
+            print "dumping:", data[0]["user__id"]
+            for tweet in data:
+                print "."
+                storage.insert(tweet)
+            print "dumped"
+        else:
+            print "fail:", data
+
+
+if __name__ == "__main__":
+    main()
