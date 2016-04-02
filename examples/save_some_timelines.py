@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Usage: python examples/save_some_timelines track '#HelloWorld'
 from sys import argv
 from multiprocessing import Pool

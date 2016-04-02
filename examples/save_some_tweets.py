@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Usage: python examples/save_some_tweets.py track     '#HelloWorld'
 #    Or: python examples/save_some_tweets.py locations '54.2,35.1,57.0,40.2'
 from sys import argv
