@@ -1,7 +1,8 @@
 #!/usr/bin/env python
-# Usage: python examples/save_some_timelines track '#HelloWorld'
+# Usage: python examples/save_some_timelines track '#HelloWorld' 12345678
 from sys import argv
 from multiprocessing import Pool
+from time import sleep
 
 import twitterology as tw
 
@@ -12,6 +13,7 @@ def gather_user_timeline(user_id):
         timeline = client.statuses.user_timeline.get(user_id=user_id, count=50)
         return True, [tw.dump_for_storage(tweet) for tweet in timeline.data]
     except tw.ClientException as ex:
+        sleep(60 * 20)
         return False, str(ex)
 
 
