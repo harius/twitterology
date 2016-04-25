@@ -3,6 +3,7 @@
 from sys import argv
 from multiprocessing import Pool
 from time import sleep
+from datetime import datetime
 
 import twitterology as tw
 
@@ -31,9 +32,11 @@ def main():
         print "[", index, "/", len(user_ids), "]"
 
         if is_success:
-            print "dumping:", data[0]["user__id"]
+            if data:
+                print "dumping:", data[0]["user__id"]
+
             for tweet in data:
-                print "."
+                print "{}".format(datetime.now())
                 storage.insert(tweet)
             print "dumped"
         else:
