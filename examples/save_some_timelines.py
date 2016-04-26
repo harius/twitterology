@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Usage: python examples/save_some_timelines track '#HelloWorld' 12345678
+# Usage: python examples/save_some_timelines.py track '#HelloWorld' 123456
 from sys import argv
 from multiprocessing import Pool
 from time import sleep
