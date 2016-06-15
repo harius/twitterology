@@ -62,5 +62,5 @@ etc/twitter_api.json
 .ipynb_checkpoints/
 
 # Databases
-db/
-db/tweets.example.db
+db/*
+!db/examples.db
