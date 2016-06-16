@@ -1,0 +1,71 @@
+#!/usr/bin/env python
+# Usage: examples/logistic_regression examples.db:track_hello
+from sys import argv
+from itertools import groupby, islice
+from operator import itemgetter
+
+import twitterology as tw
+
+
+import numpy as np
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import roc_curve
+
+from tqdm import tqdm
+
+
+def main():
+    database, table = argv[1].split(":")
+
+    storage = tw.sources.sqlite(database, table)
+    tweets = storage.find(order_by="user__id_str")
+    timelines = groupby(tweets, itemgetter("user__id_str"))
+
+    extract_features = tw.Tuple(
+        tw.Frequency(),
+        tw.Length(),
+        tw.HashtagCount(),
+        # SelfRepeatance
+    )
+
+    clf = LogisticRegression()
+
+    train_samples = []
+    test_samples = []
+    targets = []
+
+    train_samples_len = 1000
+    for user_id, timeline in tqdm(
+            islice(timelines, train_samples_len),
+            total=train_samples_len, desc="Learning"
+    ):
+        timeline = list(timeline)
+
+        train_sample = extract_features(timeline[::2])
+        test_sample = extract_features(timeline[1::2])
+
+        train_samples.append(train_sample)
+        test_samples.append(test_sample)
+
+        targets.append(user_id)
+
+    train_samples = np.array(train_samples)
+    test_samples = np.array(test_samples)
+    targets = np.array(targets)
+
+    clf.fit(train_samples, targets)
+
+    probs = clf.predict_proba(test_samples)
+    for index, class_ in tqdm(
+            enumerate(clf.classes_),
+            total=len(clf.classes_), desc="Analyzing"
+    ):
+        fprs, tprs, _ = roc_curve(targets, probs[:, index], pos_label=class_)
+
+        best_fpr = next(fpr for fpr, tpr in zip(fprs, tprs) if tpr)
+
+    print clf.score(test_samples, targets)
+
+
+if __name__ == "__main__":
+    main()
