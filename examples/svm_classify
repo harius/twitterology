@@ -1,0 +1,62 @@
+#!/usr/bin/env python
+# Usage: examples/svm_classify examples.db:track_hello
+from sys import argv
+from itertools import groupby, islice
+from operator import itemgetter
+
+import twitterology as tw
+
+
+from sklearn.linear_model import LogisticRegression
+from tqdm import tqdm
+
+
+def main():
+    database, table = argv[1].split(":")
+
+    storage = tw.sources.sqlite(database, table)
+    tweets = storage.find(order_by="user__id_str")
+
+    """
+    for tweet in tqdm(storage):
+        pass
+    """
+
+    features = tw.Tuple(
+        tw.Frequency(),
+        tw.Length(),
+        tw.HashtagCount()
+    )
+    clsf = LogisticRegression()
+
+    learn_objects = []
+    test_objects = []
+    answers = []
+
+    n = 1000
+    for user_id, user_tweets in tqdm(islice(groupby(tweets, itemgetter("user__id_str")), n), total=n):
+        user_tweets = list(user_tweets)
+
+        learn_tweets = user_tweets[::2]
+        test_tweets = user_tweets[1::2]
+
+        learn_features = features(learn_tweets)
+        test_features = features(test_tweets)
+
+        learn_objects.append(learn_features)
+        test_objects.append(test_features)
+
+        answers.append(user_id)
+
+    clsf.fit(learn_objects, answers)
+
+    probs = clsf.predict_proba(test_objects)
+    some = next(iter(probs))
+    print some
+    print sum(some)
+
+    print clsf.score(test_objects, answers)
+
+
+if __name__ == "__main__":
+    main()
