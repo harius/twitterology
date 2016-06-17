@@ -25,14 +25,14 @@ def iter_samples(extract_features, timelines):
         timeline = list(timeline)
         half_length = len(timeline) / 2
 
-        one_half = extract_features(timeline[:half_length])
-        other_half = extract_features(timeline[half_length:])
+        earlier = extract_features.features(timeline[:half_length])
+        later = extract_features.features(timeline[half_length:])
 
         for previous in previous_samples:
-            yield np.absolute(previous - other_half), 0
-        previous_samples.append(one_half)
+            yield extract_features(previous, later), 0
+        previous_samples.append(earlier)
 
-        yield np.absolute(one_half - other_half), 1
+        yield extract_features(earlier, later), 1
 
 
 def obtain_samples(extract_features, timelines, length, desc):
@@ -59,14 +59,23 @@ def main():
     tweets = storage.find(order_by="user__id_str")
     timelines = groupby(tweets, itemgetter("user__id_str"))
 
-    extract_features = tf.Product(
-        tf.Median(tf.Length()),
-        tf.Average(tf.Retweet()),
-        tf.Average(tf.Hashtags()),
-        tf.Average(tf.Mentions()),
+    extract_features = tf.ProductDifference(
+        tf.AbsoluteDifference(
+            tf.Product(
+                tf.Median(tf.Length()),
+                tf.Average(tf.Retweet()),
+                tf.Average(tf.Count(tf.Hashtags())),
+                tf.Average(tf.Count(tf.Mentions())),
+                # t.co links?
+                # Ordinary links?
 
-        tf.AverageInterval(),
-        tf.Diversity()
+                tf.AverageInterval(),
+                tf.Diversity()
+            )
+        ),
+        tf.JaccardDifference(
+            tf.Counts(tf.Hashtags(), top=3)
+        )
     )
 
     clf = LogisticRegression()

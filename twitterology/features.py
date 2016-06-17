@@ -1,4 +1,5 @@
 from re import findall, UNICODE
+from collections import Counter
 
 import numpy as np
 import arrow
@@ -6,60 +7,81 @@ import arrow
 
 class Length(object):
     def __call__(self, tweet):
-        length = float(len(tweet["text"]))
-        return np.array([length])
+        return float(len(tweet["text"]))
+
+
+class Retweet(object):
+    def __call__(self, tweet):
+        return float(bool(tweet["text"].startswith("RT")))
 
 
 class Hashtags(object):
     _hashtag = r"#\w+"
 
     def __call__(self, tweet):
-        hashtags = findall(self._hashtag, tweet["text"], flags=UNICODE)
-        count = float(len(hashtags))
-        return np.array([count])
+        return findall(self._hashtag, tweet["text"], flags=UNICODE)
 
 
 class Mentions(object):
     _mention = r"@\w+"
 
     def __call__(self, tweet):
-        mentions = findall(self._mention, tweet["text"], flags=UNICODE)
-        count = float(len(mentions))
-        return np.array([count])
+        return findall(self._mention, tweet["text"], flags=UNICODE)
 
 
-class Retweet(object):
+class Count(object):
+    def __init__(self, what):
+        self._what = what
+
     def __call__(self, tweet):
-        is_retweet = float(bool(tweet["text"].startswith("RT")))
-        return np.array([is_retweet])
+        return float(len(self._what(tweet)))
+
+
+class Counts(object):
+    length = 1
+
+    def __init__(self, what, top=None):
+        self._what = what
+        self._top = top
+
+    def __call__(self, tweets):
+        counter = Counter()
+        for tweet in tweets:
+            counter.update(self._what(tweet))
+
+        frequent = dict(counter.most_common(self._top))
+        return np.array([Counter(frequent)])
 
 
 class Average(object):
+    length = 1
+
     def __init__(self, measure):
         self._measure = measure
 
-    def __call__(self, sequence):
-        matrix = np.array([self._measure(item) for item in sequence])
-        average = np.average(matrix, axis=0)
-        return average
+    def __call__(self, tweets):
+        average = np.average([self._measure(tweet) for tweet in tweets])
+        return np.array([average])
 
 
 class Median(object):
+    length = 1
+
     def __init__(self, measure):
         self._measure = measure
 
-    def __call__(self, sequence):
-        matrix = np.array([self._measure(item) for item in sequence])
-        median = np.median(matrix, axis=0)
-        return median
+    def __call__(self, tweets):
+        median = np.median([self._measure(tweet) for tweet in tweets])
+        return np.array([median])
 
 
 class AverageInterval(object):
-    _date_format = "ddd MMM DD HH:mm:ss Z YYYY"
+    date_format = "ddd MMM DD HH:mm:ss Z YYYY"
+    length = 1
 
     def __call__(self, tweets):
         timestamps = sorted(
-            arrow.get(tweet["created_at"], self._date_format)
+            arrow.get(tweet["created_at"], self.date_format)
             for tweet in tweets
         )
         if len(timestamps) < 2:
@@ -74,12 +96,13 @@ class AverageInterval(object):
 
 
 class Diversity(object):
-    _word = r"\w+"
+    word = r"\w+"
+    length = 1
 
     def __call__(self, tweets):
         words = [
             word for tweet in tweets
-            for word in findall(self._word, tweet["text"], flags=UNICODE)
+            for word in findall(self.word, tweet["text"], flags=UNICODE)
         ]
         diversity = float(len(set(words))) / len(words)
         return np.array([diversity])
@@ -88,9 +111,52 @@ class Diversity(object):
 class Product(object):
     def __init__(self, *args):
         self._components = args
+        self.length = sum(
+            component.length for component in self._components
+        )
 
     def __call__(self, *args):
         features = []
         for component in self._components:
             features.extend(component(*args))
+        return np.array(features)
+
+
+class AbsoluteDifference(object):
+    def __init__(self, features):
+        self.features = features
+
+    def __call__(self, one, other):
+        return np.absolute(one - other)
+
+
+class JaccardDifference(object):
+    count = np.vectorize(lambda c: sum(c.values()), otypes='f')
+
+    def __init__(self, features):
+        self.features = features
+
+    def __call__(self, one, other):
+        return 1.0 - self.count(one & other) / (1 + self.count(one | other))
+
+
+class ProductDifference(object):
+    def __init__(self, *args):
+        self._components = args
+        self.features = Product(
+            *[component.features for component in self._components]
+        )
+
+    def __call__(self, one, other):
+        features = []
+
+        offset = 0
+        for component in self._components:
+            length = component.features.length
+            features.extend(component(
+                one[offset:offset + length],
+                other[offset:offset + length]
+            ))
+            offset += length
+
         return np.array(features)
