@@ -14,7 +14,7 @@ import twitterology.features as tf
 
 import numpy as np
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import roc_curve
+from sklearn.metrics import roc_curve, auc
 
 from tqdm import tqdm
 
@@ -88,12 +88,15 @@ def main():
     test_samples, test_targets = obtain_samples(
         extract_features, timelines, 1000, "Testing"
     )
-    print clf.score(test_samples, test_targets)
+    print "Score:", clf.score(test_samples, test_targets)
 
     decision = clf.decision_function(test_samples)
     fprs, tprs, _ = roc_curve(test_targets, decision)
 
-    plt.plot(fprs, tprs)
+    roc_auc = auc(fprs, tprs)
+    print "Auc:", roc_auc
+    plt.plot(fprs, tprs, label="AUC: {}".format(roc_auc))
+    plt.legend(loc="lower right")
     plt.savefig("roc.png")
 
 
