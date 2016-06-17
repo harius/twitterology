@@ -78,11 +78,10 @@ def main():
         )
     )
 
-    clf = LogisticRegression()
-
     train_samples, train_targets = obtain_samples(
         extract_features, timelines, 1000, "Training"
     )
+    clf = LogisticRegression()
     clf.fit(train_samples, train_targets)
 
     test_samples, test_targets = obtain_samples(
@@ -97,6 +96,7 @@ def main():
     print "Auc:", roc_auc
     plt.plot(fprs, tprs, label="AUC: {}".format(roc_auc))
     plt.legend(loc="lower right")
+
     plt.savefig("roc.png")
 
 

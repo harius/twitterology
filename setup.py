@@ -3,7 +3,7 @@ from distutils.core import setup
 
 setup(
     name="twitterology",
-    version="0.3.3",
+    version="0.3.4",
     url="https://github.com/harius/twitterology",
     description="A set of tools for mining and analyzing data from Twitter",
 
