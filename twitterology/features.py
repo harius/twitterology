@@ -93,4 +93,4 @@ class Product(object):
         features = []
         for component in self._components:
             features.extend(component(*args))
-        return features
+        return np.array(features)

@@ -4,6 +4,10 @@ from sys import argv
 from itertools import groupby, islice
 from operator import itemgetter
 
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
 import twitterology as tw
 import twitterology.features as tf
 
@@ -13,6 +17,39 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_curve
 
 from tqdm import tqdm
+
+
+def iter_samples(extract_features, timelines):
+    previous_samples = []
+    for _, timeline in timelines:
+        timeline = list(timeline)
+        half_length = len(timeline) / 2
+
+        one_half = extract_features(timeline[:half_length])
+        other_half = extract_features(timeline[half_length:])
+
+        for previous in previous_samples:
+            yield np.absolute(previous - other_half), 0
+        previous_samples.append(one_half)
+
+        yield np.absolute(one_half - other_half), 1
+
+
+def obtain_samples(extract_features, timelines, length, desc):
+    samples = []
+    targets = []
+
+    for sample, target in iter_samples(
+            extract_features,
+            tqdm(islice(timelines, length), total=length, desc=desc)
+    ):
+        samples.append(sample)
+        targets.append(target)
+
+    samples = np.array(samples)
+    targets = np.array(targets)
+
+    return samples, targets
 
 
 def main():
@@ -34,42 +71,21 @@ def main():
 
     clf = LogisticRegression()
 
-    train_samples = []
-    test_samples = []
-    targets = []
+    train_samples, train_targets = obtain_samples(
+        extract_features, timelines, 1000, "Training"
+    )
+    clf.fit(train_samples, train_targets)
 
-    train_samples_len = 1000
-    for user_id, timeline in tqdm(
-            islice(timelines, train_samples_len),
-            total=train_samples_len, desc="Learning"
-    ):
-        timeline = list(timeline)
-        half = len(timeline) / 2
+    test_samples, test_targets = obtain_samples(
+        extract_features, timelines, 1000, "Testing"
+    )
+    print clf.score(test_samples, test_targets)
 
-        train_sample = extract_features(timeline[:half])
-        test_sample = extract_features(timeline[half:])
+    decision = clf.decision_function(test_samples)
+    fprs, tprs, _ = roc_curve(test_targets, decision)
 
-        train_samples.append(train_sample)
-        test_samples.append(test_sample)
-
-        targets.append(user_id)
-
-    train_samples = np.array(train_samples)
-    test_samples = np.array(test_samples)
-    targets = np.array(targets)
-
-    clf.fit(train_samples, targets)
-
-    probs = clf.predict_proba(test_samples)
-    for index, class_ in tqdm(
-            enumerate(clf.classes_),
-            total=len(clf.classes_), desc="Analyzing"
-    ):
-        fprs, tprs, _ = roc_curve(targets, probs[:, index], pos_label=class_)
-
-        best_fpr = next(fpr for fpr, tpr in zip(fprs, tprs) if tpr)
-
-    print clf.score(test_samples, targets)
+    plt.plot(fprs, tprs)
+    plt.savefig("roc.png")
 
 
 if __name__ == "__main__":
