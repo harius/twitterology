@@ -5,6 +5,7 @@ from itertools import groupby, islice
 from operator import itemgetter
 
 import twitterology as tw
+import twitterology.features as tf
 
 
 import numpy as np
@@ -16,16 +17,19 @@ from tqdm import tqdm
 
 def main():
     database, table = argv[1].split(":")
-
     storage = tw.sources.sqlite(database, table)
+
     tweets = storage.find(order_by="user__id_str")
     timelines = groupby(tweets, itemgetter("user__id_str"))
 
-    extract_features = tw.Tuple(
-        tw.Frequency(),
-        tw.Length(),
-        tw.HashtagCount(),
-        # SelfRepeatance
+    extract_features = tf.Product(
+        tf.Median(tf.Length()),
+        tf.Average(tf.Retweet()),
+        tf.Average(tf.Hashtags()),
+        tf.Average(tf.Mentions()),
+
+        tf.AverageInterval(),
+        tf.Diversity()
     )
 
     clf = LogisticRegression()
@@ -40,9 +44,10 @@ def main():
             total=train_samples_len, desc="Learning"
     ):
         timeline = list(timeline)
+        half = len(timeline) / 2
 
-        train_sample = extract_features(timeline[::2])
-        test_sample = extract_features(timeline[1::2])
+        train_sample = extract_features(timeline[:half])
+        test_sample = extract_features(timeline[half:])
 
         train_samples.append(train_sample)
         test_samples.append(test_sample)
