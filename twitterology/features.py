@@ -1,3 +1,4 @@
+# coding: utf-8
 from re import findall, UNICODE
 from collections import Counter
 
@@ -6,21 +7,28 @@ import arrow
 
 
 class Length(object):
+    label = "длин. текста"
+
     def __call__(self, tweet):
         return float(len(tweet["text"]))
 
 
 class IsRetweet(object):
+    label = "част. ретвита"
+
     def __call__(self, tweet):
         return float(tweet["text"].startswith("RT"))
 
 
 class IncludesLink(object):
+    label = "числ. ссылок"
+
     def __call__(self, tweet):
         return float("https://t.co" in tweet["text"])
 
 
 class Hashtags(object):
+    label = "хэштегов"
     _hashtag = r"#\w+"
 
     def __call__(self, tweet):
@@ -28,6 +36,7 @@ class Hashtags(object):
 
 
 class Mentions(object):
+    label = "упоминаний"
     _mention = r"@\w+"
 
     def __call__(self, tweet):
@@ -37,6 +46,7 @@ class Mentions(object):
 class Count(object):
     def __init__(self, what):
         self._what = what
+        self.label = "числ. " + self._what.label
 
     def __call__(self, tweet):
         return float(len(self._what(tweet)))
@@ -48,6 +58,7 @@ class Counts(object):
     def __init__(self, what, top=None):
         self._what = what
         self._top = top
+        self.labels = ["популярн. " + self._what.label]
 
     def __call__(self, tweets):
         counter = Counter()
@@ -63,6 +74,7 @@ class Average(object):
 
     def __init__(self, measure):
         self._measure = measure
+        self.labels = ["средн. " + self._measure.label]
 
     def __call__(self, tweets):
         if tweets:
@@ -77,6 +89,7 @@ class Median(object):
 
     def __init__(self, measure):
         self._measure = measure
+        self.labels = ["медиан. " + self._measure.label]
 
     def __call__(self, tweets):
         if tweets:
@@ -87,8 +100,10 @@ class Median(object):
 
 
 class AverageInterval(object):
-    date_format = "ddd MMM DD HH:mm:ss Z YYYY"
     length = 1
+
+    date_format = "ddd MMM DD HH:mm:ss Z YYYY"
+    labels = ["средн. пауза"]
 
     def __call__(self, tweets):
         timestamps = sorted(
@@ -98,7 +113,7 @@ class AverageInterval(object):
         if len(timestamps) >= 2:
             deltas = zip(timestamps[:-1], timestamps[1:])
             average = sum(
-                (y - x).total_seconds() / 60.0
+                min((y - x).total_seconds() / 60.0 / 60.0, 24.0 * 14.0)
                 for x, y in deltas
             ) / len(deltas)
         else:
@@ -107,8 +122,10 @@ class AverageInterval(object):
 
 
 class Diversity(object):
-    word = r"\w+"
     length = 1
+
+    word = r"\w+"
+    labels = ["повторяемость"]
 
     def __call__(self, tweets):
         words = [
@@ -124,14 +141,13 @@ class Diversity(object):
 
 class Product(object):
     def __init__(self, *args):
-        self._components = args
-        self.length = sum(
-            component.length for component in self._components
-        )
+        self.components = args
+        self.length = sum(component.length for component in args)
+        self.labels = [label for component in self.components for label in component.labels]
 
     def __call__(self, *args):
         features = []
-        for component in self._components:
+        for component in self.components:
             features.extend(component(*args))
         return np.array(features)
 
@@ -145,7 +161,7 @@ class AbsoluteDifference(object):
 
 
 class JaccardDifference(object):
-    count = np.vectorize(lambda c: sum(c.values()), otypes='f')
+    count = np.vectorize(len, otypes='f')
 
     def __init__(self, features):
         self.features = features

@@ -56,6 +56,20 @@ def take_samples(
     return samples, targets
 
 
+def plot_features(samples, targets, extract_features):
+    plt.figure(figsize=(8, 15))
+    for index, (distribution, label) in enumerate(zip(samples.T, extract_features.features.labels), start=1):
+        plt.subplot(len(extract_features.features.labels), 1, index)
+        for target in [0, 1]:
+            mask = (targets == target).astype(int)
+            density, edges = np.histogram(distribution, weights=mask, bins=23, density=True)
+
+            plt.plot(edges[1:], density, label=str(target))
+            plt.title(label.decode("utf-8"))
+    plt.tight_layout()
+    plt.savefig("features.png")
+
+
 def main():
     database, table = argv[1].split(":")
     storage = tw.sources.sqlite(database, table)
@@ -70,7 +84,7 @@ def main():
                 tf.Average(tf.IsRetweet()),
                 tf.Average(tf.Count(tf.Hashtags())),
                 tf.Average(tf.Count(tf.Mentions())),
-                # tf.Average(tf.IncludesLink()),
+                tf.Average(tf.IncludesLink()),
 
                 tf.AverageInterval(),
                 tf.Diversity()
@@ -88,7 +102,7 @@ def main():
     clf.fit(train_samples, train_targets)
 
     test_samples, test_targets = take_samples(
-        timelines, 1000, 32000, extract_features, "Testing"
+        timelines, 10000, 320000, extract_features, "Testing"
     )
     print "Score:", clf.score(test_samples, test_targets)
 
@@ -97,10 +111,14 @@ def main():
 
     roc_auc = auc(fprs, tprs)
     print "Auc:", roc_auc
+
+    plt.figure()
     plt.plot(fprs, tprs, label="AUC: {}".format(roc_auc))
     plt.legend(loc="lower right")
 
     plt.savefig("roc.png")
+
+    plot_features(test_samples, test_targets, extract_features)
 
 
 if __name__ == "__main__":
