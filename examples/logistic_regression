@@ -6,7 +6,7 @@ from operator import itemgetter
 from random import Random
 
 import matplotlib
-matplotlib.use("Agg")
+matplotlib.use("pdf")
 import matplotlib.pyplot as plt
 
 import twitterology as tw
@@ -57,7 +57,9 @@ def take_samples(
 
 
 def plot_features(samples, targets, extract_features):
-    plt.figure(figsize=(8, 15))
+    plt.figure(figsize=(6, 15))
+    plt.subplots_adjust(hspace=0.5)
+
     for index, (distribution, label) in enumerate(zip(samples.T, extract_features.features.labels), start=1):
         plt.subplot(len(extract_features.features.labels), 1, index)
         for target in [0, 1]:
@@ -66,8 +68,7 @@ def plot_features(samples, targets, extract_features):
 
             plt.plot(edges[1:], density, label=str(target))
             plt.title(label.decode("utf-8"))
-    plt.tight_layout()
-    plt.savefig("features.png")
+    plt.savefig("features")
 
 
 def main():
@@ -96,7 +97,7 @@ def main():
     )
 
     train_samples, train_targets = take_samples(
-        timelines, 1000, 32000, extract_features, "Training"
+        timelines, 2000, 64000, extract_features, "Training"
     )
     clf = LogisticRegression()
     clf.fit(train_samples, train_targets)
@@ -112,11 +113,11 @@ def main():
     roc_auc = auc(fprs, tprs)
     print "Auc:", roc_auc
 
-    plt.figure()
+    plt.figure(figsize=(6, 4))
     plt.plot(fprs, tprs, label="AUC: {}".format(roc_auc))
     plt.legend(loc="lower right")
 
-    plt.savefig("roc.png")
+    plt.savefig("roc")
 
     plot_features(test_samples, test_targets, extract_features)
 
