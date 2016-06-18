@@ -65,7 +65,10 @@ class Average(object):
         self._measure = measure
 
     def __call__(self, tweets):
-        average = np.average([self._measure(tweet) for tweet in tweets])
+        if tweets:
+            average = np.average([self._measure(tweet) for tweet in tweets])
+        else:
+            average = 0.0
         return np.array([average])
 
 
@@ -76,7 +79,10 @@ class Median(object):
         self._measure = measure
 
     def __call__(self, tweets):
-        median = np.median([self._measure(tweet) for tweet in tweets])
+        if tweets:
+            median = np.median([self._measure(tweet) for tweet in tweets])
+        else:
+            median = 0.0
         return np.array([median])
 
 
@@ -89,14 +95,14 @@ class AverageInterval(object):
             arrow.get(tweet["created_at"], self.date_format)
             for tweet in tweets
         )
-        if len(timestamps) < 2:
-            average = 0.0
-        else:
+        if len(timestamps) >= 2:
             deltas = zip(timestamps[:-1], timestamps[1:])
             average = sum(
                 (y - x).total_seconds() / 60.0
                 for x, y in deltas
             ) / len(deltas)
+        else:
+            average = 0.0
         return np.array([average])
 
 
@@ -109,7 +115,10 @@ class Diversity(object):
             word for tweet in tweets
             for word in findall(self.word, tweet["text"], flags=UNICODE)
         ]
-        diversity = float(len(set(words))) / len(words)
+        if words:
+            diversity = float(len(set(words))) / len(words)
+        else:
+            diversity = 0.0
         return np.array([diversity])
 
 
