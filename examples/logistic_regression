@@ -14,6 +14,7 @@ import twitterology.features as tf
 
 
 import numpy as np
+from scipy.interpolate import spline
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_curve, auc
 
@@ -57,17 +58,24 @@ def take_samples(
 
 
 def plot_features(samples, targets, extract_features):
-    plt.figure(figsize=(6, 15))
-    plt.subplots_adjust(hspace=0.5)
+    rows = (len(extract_features.features.labels) + 1) / 2
 
-    for index, (distribution, label) in enumerate(zip(samples.T, extract_features.features.labels), start=1):
-        plt.subplot(len(extract_features.features.labels), 1, index)
+    fig, axs = plt.subplots(rows, 2, figsize=(7, 10))
+    fig.subplots_adjust(hspace=0.5, wspace=0.3)
+
+    axs = iter(axs.ravel())
+    for index, (distribution, label, ax) in enumerate(zip(samples.T, extract_features.features.labels, axs), start=1):
         for target in [0, 1]:
             mask = (targets == target).astype(int)
-            density, edges = np.histogram(distribution, weights=mask, bins=23, density=True)
+            density, edges = np.histogram(distribution, weights=mask, bins=17, density=True)
 
-            plt.plot(edges[1:], density, label=str(target))
-            plt.title(label.decode("utf-8"))
+            ax.plot(edges[1:], spline(edges[1:], density, edges[1:]), label=str(target))
+            ax.yaxis.set_visible(False)
+            ax.set_title(label.decode("utf-8"))
+
+    for ax in axs:
+        ax.axis("off")
+
     plt.savefig("features")
 
 
@@ -92,7 +100,10 @@ def main():
             )
         ),
         tf.JaccardDifference(
-            tf.Counts(tf.Hashtags(), top=4)
+            tf.Product(
+                tf.Counts(tf.Hashtags(), top=4),
+                tf.Counts(tf.Mentions(), top=2)
+            )
         )
     )
 
@@ -113,9 +124,10 @@ def main():
     roc_auc = auc(fprs, tprs)
     print "Auc:", roc_auc
 
-    plt.figure(figsize=(6, 4))
+    plt.figure(figsize=(7, 7))
     plt.plot(fprs, tprs, label="AUC: {}".format(roc_auc))
     plt.legend(loc="lower right")
+    plt.grid()
 
     plt.savefig("roc")
 
