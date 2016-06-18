@@ -10,9 +10,14 @@ class Length(object):
         return float(len(tweet["text"]))
 
 
-class Retweet(object):
+class IsRetweet(object):
     def __call__(self, tweet):
-        return float(bool(tweet["text"].startswith("RT")))
+        return float(tweet["text"].startswith("RT"))
+
+
+class IncludesLink(object):
+    def __call__(self, tweet):
+        return float("https://t.co" in tweet["text"])
 
 
 class Hashtags(object):

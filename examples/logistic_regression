@@ -3,6 +3,7 @@
 from sys import argv
 from itertools import groupby, islice
 from operator import itemgetter
+from random import Random
 
 import matplotlib
 matplotlib.use("Agg")
@@ -19,32 +20,35 @@ from sklearn.metrics import roc_curve, auc
 from tqdm import tqdm
 
 
-def iter_samples(extract_features, timelines):
-    previous_samples = []
-    for _, timeline in timelines:
+def take_samples(
+        timelines, similar_pairs, distinct_pairs,
+        extract_features,
+        description
+):
+    random = Random(42)
+    timelines = islice(timelines, similar_pairs)
+
+    timeline_samples = []
+    for _, timeline in tqdm(timelines, total=similar_pairs, desc=description + " (step 1)"):
         timeline = list(timeline)
         half_length = len(timeline) / 2
 
         earlier = extract_features.features(timeline[:half_length])
         later = extract_features.features(timeline[half_length:])
 
-        for previous in previous_samples:
-            yield extract_features(previous, later), 0
-        previous_samples.append(earlier)
+        timeline_samples.append((earlier, later))
 
-        yield extract_features(earlier, later), 1
-
-
-def obtain_samples(extract_features, timelines, length, desc):
     samples = []
     targets = []
 
-    for sample, target in iter_samples(
-            extract_features,
-            tqdm(islice(timelines, length), total=length, desc=desc)
-    ):
-        samples.append(sample)
-        targets.append(target)
+    for (earlier, later) in tqdm(timeline_samples, desc=description + " (step 2)"):
+        samples.append(extract_features(earlier, later))
+        targets.append(1)
+
+    for _ in tqdm(range(distinct_pairs), desc=description + " (step 3)"):
+        (earlier, _), (_, later) = random.sample(timeline_samples, 2)
+        samples.append(extract_features(earlier, later))
+        targets.append(0)
 
     samples = np.array(samples)
     targets = np.array(targets)
@@ -63,29 +67,28 @@ def main():
         tf.AbsoluteDifference(
             tf.Product(
                 tf.Median(tf.Length()),
-                tf.Average(tf.Retweet()),
+                tf.Average(tf.IsRetweet()),
                 tf.Average(tf.Count(tf.Hashtags())),
                 tf.Average(tf.Count(tf.Mentions())),
-                # t.co links?
-                # Ordinary links?
+                # tf.Average(tf.IncludesLink()),
 
                 tf.AverageInterval(),
                 tf.Diversity()
             )
         ),
         tf.JaccardDifference(
-            tf.Counts(tf.Hashtags(), top=3)
+            tf.Counts(tf.Hashtags(), top=4)
         )
     )
 
-    train_samples, train_targets = obtain_samples(
-        extract_features, timelines, 1000, "Training"
+    train_samples, train_targets = take_samples(
+        timelines, 1000, 32000, extract_features, "Training"
     )
     clf = LogisticRegression()
     clf.fit(train_samples, train_targets)
 
-    test_samples, test_targets = obtain_samples(
-        extract_features, timelines, 1000, "Testing"
+    test_samples, test_targets = take_samples(
+        timelines, 1000, 32000, extract_features, "Testing"
     )
     print "Score:", clf.score(test_samples, test_targets)
 
