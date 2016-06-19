@@ -7,24 +7,33 @@ import arrow
 
 
 class Length(object):
-    label = "длин. текста"
+    label = "длина текста"
 
     def __call__(self, tweet):
         return float(len(tweet["text"]))
 
 
 class IsRetweet(object):
-    label = "част. ретвита"
+    label = "частота ретвитов"
 
     def __call__(self, tweet):
         return float(tweet["text"].startswith("RT"))
 
 
 class IncludesLink(object):
-    label = "числ. ссылок"
+    label = "частота ссылок"
 
     def __call__(self, tweet):
         return float("https://t.co" in tweet["text"])
+
+
+class Time(object):
+    date_format = "ddd MMM DD HH:mm:ss Z YYYY"
+    label = "время публикации"
+
+    def __call__(self, tweet):
+        time = arrow.get(tweet["created_at"], self.date_format)
+        return time.hour * 60.0 + time.minute
 
 
 class Hashtags(object):
@@ -46,7 +55,7 @@ class Mentions(object):
 class Count(object):
     def __init__(self, what):
         self._what = what
-        self.label = "числ. " + self._what.label
+        self.label = "число " + self._what.label
 
     def __call__(self, tweet):
         return float(len(self._what(tweet)))
@@ -58,7 +67,7 @@ class Counts(object):
     def __init__(self, what, top=None):
         self._what = what
         self._top = top
-        self.labels = ["популярн. " + self._what.label]
+        self.labels = ["Множ-во популярных " + self._what.label]
 
     def __call__(self, tweets):
         counter = Counter()
@@ -74,7 +83,7 @@ class Average(object):
 
     def __init__(self, measure):
         self._measure = measure
-        self.labels = ["средн. " + self._measure.label]
+        self.labels = ["Средн. " + self._measure.label]
 
     def __call__(self, tweets):
         if tweets:
@@ -89,7 +98,7 @@ class Median(object):
 
     def __init__(self, measure):
         self._measure = measure
-        self.labels = ["медиан. " + self._measure.label]
+        self.labels = ["Медиан. " + self._measure.label]
 
     def __call__(self, tweets):
         if tweets:
@@ -103,7 +112,7 @@ class AverageInterval(object):
     length = 1
 
     date_format = "ddd MMM DD HH:mm:ss Z YYYY"
-    labels = ["средн. пауза"]
+    labels = ["Средний интервал"]
 
     def __call__(self, tweets):
         timestamps = sorted(
@@ -125,7 +134,7 @@ class Diversity(object):
     length = 1
 
     word = r"\w+"
-    labels = ["повторяемость"]
+    labels = ["Повторяемость"]
 
     def __call__(self, tweets):
         words = [
@@ -161,13 +170,18 @@ class AbsoluteDifference(object):
 
 
 class JaccardDifference(object):
-    count = np.vectorize(len, otypes='f')
+    count = np.vectorize(len)
 
     def __init__(self, features):
         self.features = features
 
     def __call__(self, one, other):
-        return 1.0 - self.count(one & other) / (1 + self.count(one | other))
+        count_intersections = self.count(one & other)
+
+        count_unions = self.count(one | other)
+        count_unions[count_unions == 0] = 1
+
+        return 1.0 - count_intersections.astype("float64") / count_unions
 
 
 class ProductDifference(object):

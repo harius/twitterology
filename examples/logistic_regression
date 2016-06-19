@@ -69,9 +69,12 @@ def plot_features(samples, targets, extract_features):
             density, edges = np.histogram(distribution, weights=mask, bins=23, density=True)
 
             ax.plot(edges[1:], density, label=str(target))
-            ax.yaxis.set_visible(False)
-            ax.set_ylim([-0.1 * max(density), 1.1 * max(density)])
-            ax.set_title(label.decode("utf-8"))
+
+        ax.yaxis.set_visible(False)
+        ax.set_ylim([-0.1 * max(density), 1.1 * max(density)])
+        title = ax.set_title(label.decode("utf-8"))
+        title.set_family("serif")
+        title.set_size("small")
 
     for ax in axs:
         ax.axis("off")
@@ -94,6 +97,7 @@ def main():
                 tf.Average(tf.Count(tf.Hashtags())),
                 tf.Average(tf.Count(tf.Mentions())),
                 tf.Average(tf.IncludesLink()),
+                tf.Median(tf.Time()),
 
                 tf.AverageInterval(),
                 tf.Diversity()
