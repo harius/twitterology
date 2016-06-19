@@ -106,7 +106,8 @@ def main():
         tf.JaccardDifference(
             tf.Product(
                 tf.Counts(tf.Hashtags(), top=4),
-                tf.Counts(tf.Mentions(), top=2)
+                tf.Counts(tf.Mentions(), top=2),
+                tf.Counts(tf.Words(), top=8)
             )
         )
     )
@@ -127,6 +128,8 @@ def main():
 
     roc_auc = auc(fprs, tprs)
     print "Auc:", roc_auc
+
+    print clf.coef_
 
     plt.figure(figsize=(7, 7))
     plt.plot(fprs, tprs, label="AUC: {}".format(roc_auc))

@@ -52,6 +52,14 @@ class Mentions(object):
         return findall(self._mention, tweet["text"], flags=UNICODE)
 
 
+class Words(object):
+    label = "слов"
+    _word = r"\w+"
+
+    def __call__(self, tweet):
+        return findall(self._word, tweet["text"], flags=UNICODE)
+
+
 class Count(object):
     def __init__(self, what):
         self._what = what
@@ -112,7 +120,7 @@ class AverageInterval(object):
     length = 1
 
     date_format = "ddd MMM DD HH:mm:ss Z YYYY"
-    labels = ["Средний интервал"]
+    labels = ["Средн. интервал"]
 
     def __call__(self, tweets):
         timestamps = sorted(
