@@ -14,7 +14,6 @@ import twitterology.features as tf
 
 
 import numpy as np
-from scipy.interpolate import spline
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_curve, auc
 
@@ -67,10 +66,11 @@ def plot_features(samples, targets, extract_features):
     for index, (distribution, label, ax) in enumerate(zip(samples.T, extract_features.features.labels, axs), start=1):
         for target in [0, 1]:
             mask = (targets == target).astype(int)
-            density, edges = np.histogram(distribution, weights=mask, bins=17, density=True)
+            density, edges = np.histogram(distribution, weights=mask, bins=23, density=True)
 
-            ax.plot(edges[1:], spline(edges[1:], density, edges[1:]), label=str(target))
+            ax.plot(edges[1:], density, label=str(target))
             ax.yaxis.set_visible(False)
+            ax.set_ylim([-0.1 * max(density), 1.1 * max(density)])
             ax.set_title(label.decode("utf-8"))
 
     for ax in axs:
