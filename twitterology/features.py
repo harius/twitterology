@@ -60,6 +60,14 @@ class Words(object):
         return findall(self._word, tweet["text"], flags=UNICODE)
 
 
+class NeutralPunctuation(object):
+    label = "знаков препинания"
+    _punctuation = r"[,.:]"
+
+    def __call__(self, tweet):
+        return findall(self._punctuation, tweet["text"], flags=UNICODE)
+
+
 class Count(object):
     def __init__(self, what):
         self._what = what

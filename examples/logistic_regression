@@ -93,6 +93,7 @@ def main():
         tf.AbsoluteDifference(
             tf.Product(
                 tf.Median(tf.Length()),
+                tf.Average(tf.Count(tf.NeutralPunctuation())),
                 tf.Average(tf.IsRetweet()),
                 tf.Average(tf.Count(tf.Hashtags())),
                 tf.Average(tf.Count(tf.Mentions())),
@@ -123,8 +124,8 @@ def main():
     )
     print "Score:", clf.score(test_samples, test_targets)
 
-    decision = clf.decision_function(test_samples)
-    fprs, tprs, _ = roc_curve(test_targets, decision)
+    decision = clf.predict_proba(test_samples)
+    fprs, tprs, _ = roc_curve(test_targets, decision[:, 1])
 
     roc_auc = auc(fprs, tprs)
     print "Auc:", roc_auc
