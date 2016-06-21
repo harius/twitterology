@@ -41,7 +41,7 @@ def main():
 
     train_indices, test_indices = next(iter(splitter))
     train_samples, train_targets = samples[train_indices], targets[train_indices]
-    test_samples, test_targets = samples[test_indices], targets[test_indices]
+    test_samples, test_targets, test_users = samples[test_indices], targets[test_indices], users[test_indices]
 
     clf.fit(train_samples, train_targets)
     probs = clf.predict_proba(test_samples)
@@ -58,7 +58,7 @@ def main():
     strange = (probs[:, 1] > 0.8) & (test_targets == 0)
     print strange.sum(), "/", len(strange)
 
-    np.savetxt("db/strange.gz", users[strange], fmt="%s")
+    np.savetxt("db/strange.gz", test_users[strange], fmt="%s")
 
 
 if __name__ == "__main__":

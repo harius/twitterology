@@ -1,0 +1,48 @@
+#!/usr/bin/env python
+# Usage: examples/logistic_regression examples.db:track_hello
+from sys import argv
+from itertools import groupby, islice
+from operator import itemgetter
+from random import Random
+
+import matplotlib
+matplotlib.use("pdf")
+import matplotlib.pyplot as plt
+
+import twitterology as tw
+import twitterology.features as tf
+
+
+import numpy as np
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import roc_curve, auc
+from sklearn.cross_validation import cross_val_score, StratifiedKFold
+
+from tqdm import tqdm
+
+
+def print_tweets(tweets):
+    c = 0
+    for tweet in tweets:
+        print tweet["text"].encode("utf-8")
+        c += 1
+        if c > 3:
+            break
+        print "---"
+
+
+def main():
+    database, table = argv[1].split(":")
+    storage = tw.sources.sqlite(database, table)
+
+    strange = np.loadtxt("db/strange.gz", dtype="string")
+    for user_a, user_b in strange:
+        print_tweets(storage.find(user__id_str=user_a))
+        print "\n/////////\n"
+        print_tweets(storage.find(user__id_str=user_b))
+        print "\n\n!!!!!!!!!!!!!!!!!!!!!!\n\n"
+
+
+if __name__ == "__main__":
+    main()
