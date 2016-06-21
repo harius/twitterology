@@ -130,6 +130,9 @@ class AverageInterval(object):
     date_format = "ddd MMM DD HH:mm:ss Z YYYY"
     labels = ["Средн. интервал"]
 
+    def __init__(self, sampling):
+        self.sampling = sampling
+
     def __call__(self, tweets):
         timestamps = sorted(
             arrow.get(tweet["created_at"], self.date_format)
@@ -143,7 +146,7 @@ class AverageInterval(object):
             ) / len(deltas)
         else:
             average = 0.0
-        return np.array([average])
+        return np.array([average * self.sampling])
 
 
 class Diversity(object):

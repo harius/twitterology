@@ -14,8 +14,10 @@ import twitterology.features as tf
 
 
 import numpy as np
+
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_curve, auc
+from sklear.cross_validation import cross_val_score
 
 from tqdm import tqdm
 
@@ -31,10 +33,9 @@ def take_samples(
     timeline_samples = []
     for _, timeline in tqdm(timelines, total=similar_pairs, desc=description + " (step 1)"):
         timeline = list(timeline)
-        half_length = len(timeline) / 2
 
-        earlier = extract_features.features(timeline[:half_length])
-        later = extract_features.features(timeline[half_length:])
+        earlier = extract_features.features(timeline[::2])
+        later = extract_features.features(timeline[1::2])
 
         timeline_samples.append((earlier, later))
 
@@ -100,7 +101,7 @@ def main():
                 tf.Average(tf.IncludesLink()),
                 tf.Median(tf.Time()),
 
-                tf.AverageInterval(),
+                tf.AverageInterval(sampling=0.5),
                 tf.Diversity()
             )
         ),
@@ -114,13 +115,13 @@ def main():
     )
 
     train_samples, train_targets = take_samples(
-        timelines, 2000, 64000, extract_features, "Training"
+        timelines, 10000, 320000, extract_features, "Training"
     )
     clf = LogisticRegression()
     clf.fit(train_samples, train_targets)
 
     test_samples, test_targets = take_samples(
-        timelines, 10000, 320000, extract_features, "Testing"
+        timelines, 2000, 64000, extract_features, "Testing"
     )
     print "Score:", clf.score(test_samples, test_targets)
 
