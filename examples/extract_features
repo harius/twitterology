@@ -1,0 +1,127 @@
+#!/usr/bin/env python
+# Usage: examples/logistic_regression examples.db:track_hello
+from sys import argv
+from itertools import groupby, islice
+from operator import itemgetter
+from random import Random
+
+import matplotlib
+matplotlib.use("pdf")
+import matplotlib.pyplot as plt
+
+import twitterology as tw
+import twitterology.features as tf
+
+
+import numpy as np
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import roc_curve, auc
+from sklearn.cross_validation import cross_val_score, StratifiedKFold
+
+from tqdm import tqdm
+
+
+def take_samples(
+        timelines, similar_pairs, distinct_pairs,
+        extract_features,
+        description
+):
+    random = Random(42)
+    timelines = islice(timelines, similar_pairs)
+
+    timeline_samples = []
+    for _, timeline in tqdm(timelines, total=similar_pairs, desc=description + " (step 1)"):
+        timeline = list(timeline)
+
+        earlier = extract_features.features(timeline[::2])
+        later = extract_features.features(timeline[1::2])
+
+        timeline_samples.append((earlier, later))
+
+    samples = []
+    targets = []
+
+    for (earlier, later) in tqdm(timeline_samples, desc=description + " (step 2)"):
+        samples.append(extract_features(earlier, later))
+        targets.append(1)
+
+    for _ in tqdm(range(distinct_pairs), desc=description + " (step 3)"):
+        (earlier, _), (_, later) = random.sample(timeline_samples, 2)
+        samples.append(extract_features(earlier, later))
+        targets.append(0)
+
+    samples = np.array(samples)
+    targets = np.array(targets)
+
+    return samples, targets
+
+
+def plot_features(samples, targets, extract_features):
+    rows = (len(extract_features.features.labels) + 1) / 2
+
+    fig, axs = plt.subplots(rows, 2, figsize=(7, 10))
+    fig.subplots_adjust(hspace=0.5, wspace=0.3)
+
+    axs = iter(axs.ravel())
+    for index, (distribution, label, ax) in enumerate(zip(samples.T, extract_features.features.labels, axs), start=1):
+        for target in [0, 1]:
+            mask = (targets == target).astype(int)
+            density, edges = np.histogram(distribution, weights=mask, bins=23, density=True)
+
+            ax.plot(edges[1:], density, label=str(target))
+
+        ax.yaxis.set_visible(False)
+        ax.set_ylim([-0.1 * max(density), 1.1 * max(density)])
+        title = ax.set_title(label.decode("utf-8"))
+        title.set_family("serif")
+        title.set_size("small")
+
+    for ax in axs:
+        ax.axis("off")
+
+    plt.savefig("features")
+
+
+def main():
+    database, table = argv[1].split(":")
+    storage = tw.sources.sqlite(database, table)
+
+    tweets = storage.find(order_by="user__id_str")
+    timelines = groupby(tweets, itemgetter("user__id_str"))
+
+    extract_features = tf.ProductDifference(
+        tf.AbsoluteDifference(
+            tf.Product(
+                tf.Median(tf.Length()),
+                tf.Average(tf.Count(tf.NeutralPunctuation())),
+                tf.Average(tf.IsRetweet()),
+                tf.Average(tf.Count(tf.Hashtags())),
+                tf.Average(tf.Count(tf.Mentions())),
+                tf.Average(tf.IncludesLink()),
+                tf.Median(tf.Time()),
+
+                tf.AverageInterval(sampling=0.5),
+                tf.Diversity()
+            )
+        ),
+        tf.JaccardDifference(
+            tf.Product(
+                tf.Counts(tf.Hashtags(), top=4),
+                tf.Counts(tf.Mentions(), top=2),
+                tf.Counts(tf.Words(), top=8)
+            )
+        )
+    )
+
+    samples, targets = take_samples(
+        timelines, 12000, 360000, extract_features, "Sample"
+    )
+
+    plot_features(samples, targets, extract_features)
+    np.savetxt("db/samples.gz", samples)
+    np.savetxt("db/targets.gz", targets)
+
+
+if __name__ == "__main__":
+    main()

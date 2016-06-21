@@ -17,130 +17,44 @@ import numpy as np
 
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_curve, auc
-from sklear.cross_validation import cross_val_score
+from sklearn.cross_validation import cross_val_score, StratifiedKFold
 
 from tqdm import tqdm
 
 
-def take_samples(
-        timelines, similar_pairs, distinct_pairs,
-        extract_features,
-        description
-):
-    random = Random(42)
-    timelines = islice(timelines, similar_pairs)
-
-    timeline_samples = []
-    for _, timeline in tqdm(timelines, total=similar_pairs, desc=description + " (step 1)"):
-        timeline = list(timeline)
-
-        earlier = extract_features.features(timeline[::2])
-        later = extract_features.features(timeline[1::2])
-
-        timeline_samples.append((earlier, later))
-
-    samples = []
-    targets = []
-
-    for (earlier, later) in tqdm(timeline_samples, desc=description + " (step 2)"):
-        samples.append(extract_features(earlier, later))
-        targets.append(1)
-
-    for _ in tqdm(range(distinct_pairs), desc=description + " (step 3)"):
-        (earlier, _), (_, later) = random.sample(timeline_samples, 2)
-        samples.append(extract_features(earlier, later))
-        targets.append(0)
-
-    samples = np.array(samples)
-    targets = np.array(targets)
-
-    return samples, targets
-
-
-def plot_features(samples, targets, extract_features):
-    rows = (len(extract_features.features.labels) + 1) / 2
-
-    fig, axs = plt.subplots(rows, 2, figsize=(7, 10))
-    fig.subplots_adjust(hspace=0.5, wspace=0.3)
-
-    axs = iter(axs.ravel())
-    for index, (distribution, label, ax) in enumerate(zip(samples.T, extract_features.features.labels, axs), start=1):
-        for target in [0, 1]:
-            mask = (targets == target).astype(int)
-            density, edges = np.histogram(distribution, weights=mask, bins=23, density=True)
-
-            ax.plot(edges[1:], density, label=str(target))
-
-        ax.yaxis.set_visible(False)
-        ax.set_ylim([-0.1 * max(density), 1.1 * max(density)])
-        title = ax.set_title(label.decode("utf-8"))
-        title.set_family("serif")
-        title.set_size("small")
-
-    for ax in axs:
-        ax.axis("off")
-
-    plt.savefig("features")
-
-
 def main():
-    database, table = argv[1].split(":")
-    storage = tw.sources.sqlite(database, table)
+    samples = np.loadtxt("db/samples.gz")
+    targets = np.loadtxt("db/targets.gz")
 
-    tweets = storage.find(order_by="user__id_str")
-    timelines = groupby(tweets, itemgetter("user__id_str"))
-
-    extract_features = tf.ProductDifference(
-        tf.AbsoluteDifference(
-            tf.Product(
-                tf.Median(tf.Length()),
-                tf.Average(tf.Count(tf.NeutralPunctuation())),
-                tf.Average(tf.IsRetweet()),
-                tf.Average(tf.Count(tf.Hashtags())),
-                tf.Average(tf.Count(tf.Mentions())),
-                tf.Average(tf.IncludesLink()),
-                tf.Median(tf.Time()),
-
-                tf.AverageInterval(sampling=0.5),
-                tf.Diversity()
-            )
-        ),
-        tf.JaccardDifference(
-            tf.Product(
-                tf.Counts(tf.Hashtags(), top=4),
-                tf.Counts(tf.Mentions(), top=2),
-                tf.Counts(tf.Words(), top=8)
-            )
-        )
+    splitter = StratifiedKFold(
+        targets, n_folds=10,
+        random_state=123, shuffle=True
     )
+    for tr_idx, ts_idx in splitter:
+        print "train:", targets[tr_idx].sum(), "/", len(targets[tr_idx])
+        print "test:", targets[ts_idx].sum(), "/", len(targets[ts_idx])
 
-    train_samples, train_targets = take_samples(
-        timelines, 10000, 320000, extract_features, "Training"
-    )
     clf = LogisticRegression()
-    clf.fit(train_samples, train_targets)
-
-    test_samples, test_targets = take_samples(
-        timelines, 2000, 64000, extract_features, "Testing"
+    roc_aucs = cross_val_score(
+        clf, samples, targets,
+        cv=splitter, scoring="roc_auc"
     )
-    print "Score:", clf.score(test_samples, test_targets)
+    print roc_aucs, np.average(roc_aucs)
 
-    decision = clf.predict_proba(test_samples)
-    fprs, tprs, _ = roc_curve(test_targets, decision[:, 1])
+    train_indices, test_indices = next(iter(splitter))
+    train_samples, train_targets = samples[train_indices], targets[train_indices]
+    test_samples, test_targets = samples[test_indices], targets[test_indices]
 
-    roc_auc = auc(fprs, tprs)
-    print "Auc:", roc_auc
-
-    print clf.coef_
+    clf.fit(train_samples, train_targets)
+    probs = clf.predict_proba(test_samples)
+    false_positives, true_positives, _ = roc_curve(test_targets, probs[:, 1])
+    roc_auc = auc(false_positives, true_positives)
 
     plt.figure(figsize=(7, 7))
-    plt.plot(fprs, tprs, label="AUC: {}".format(roc_auc))
+    plt.plot(false_positives, true_positives, label="AUC: {}".format(roc_auc))
     plt.legend(loc="lower right")
     plt.grid()
-
     plt.savefig("roc")
-
-    plot_features(test_samples, test_targets, extract_features)
 
 
 if __name__ == "__main__":
