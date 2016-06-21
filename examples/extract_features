@@ -31,30 +31,34 @@ def take_samples(
     timelines = islice(timelines, similar_pairs)
 
     timeline_samples = []
-    for _, timeline in tqdm(timelines, total=similar_pairs, desc=description + " (step 1)"):
+    for user_id, timeline in tqdm(timelines, total=similar_pairs, desc=description + " (step 1)"):
         timeline = list(timeline)
 
         earlier = extract_features.features(timeline[::2])
         later = extract_features.features(timeline[1::2])
 
-        timeline_samples.append((earlier, later))
+        timeline_samples.append((user_id, earlier, later))
 
+    users = []
     samples = []
     targets = []
 
-    for (earlier, later) in tqdm(timeline_samples, desc=description + " (step 2)"):
+    for (user_id, earlier, later) in tqdm(timeline_samples, desc=description + " (step 2)"):
+        users.append([user_id, user_id])
         samples.append(extract_features(earlier, later))
         targets.append(1)
 
     for _ in tqdm(range(distinct_pairs), desc=description + " (step 3)"):
-        (earlier, _), (_, later) = random.sample(timeline_samples, 2)
+        (user_a, earlier, _), (user_b, _, later) = random.sample(timeline_samples, 2)
+        users.append([user_a, user_b])
         samples.append(extract_features(earlier, later))
         targets.append(0)
 
+    users = np.array(users)
     samples = np.array(samples)
     targets = np.array(targets)
 
-    return samples, targets
+    return users, samples, targets
 
 
 def plot_features(samples, targets, extract_features):
@@ -114,11 +118,13 @@ def main():
         )
     )
 
-    samples, targets = take_samples(
+    users, samples, targets = take_samples(
         timelines, 12000, 360000, extract_features, "Sample"
     )
 
     plot_features(samples, targets, extract_features)
+
+    np.savetxt("db/users.gz", users, fmt="%s")
     np.savetxt("db/samples.gz", samples)
     np.savetxt("db/targets.gz", targets)
 

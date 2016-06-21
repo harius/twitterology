@@ -23,6 +23,7 @@ from tqdm import tqdm
 
 
 def main():
+    users = np.loadtxt("db/users.gz", dtype="string")
     samples = np.loadtxt("db/samples.gz")
     targets = np.loadtxt("db/targets.gz")
 
@@ -30,9 +31,6 @@ def main():
         targets, n_folds=10,
         random_state=123, shuffle=True
     )
-    for tr_idx, ts_idx in splitter:
-        print "train:", targets[tr_idx].sum(), "/", len(targets[tr_idx])
-        print "test:", targets[ts_idx].sum(), "/", len(targets[ts_idx])
 
     clf = LogisticRegression()
     roc_aucs = cross_val_score(
@@ -47,14 +45,20 @@ def main():
 
     clf.fit(train_samples, train_targets)
     probs = clf.predict_proba(test_samples)
-    false_positives, true_positives, _ = roc_curve(test_targets, probs[:, 1])
+    false_positives, true_positives, thresholds = roc_curve(test_targets, probs[:, 1])
     roc_auc = auc(false_positives, true_positives)
 
     plt.figure(figsize=(7, 7))
     plt.plot(false_positives, true_positives, label="AUC: {}".format(roc_auc))
+    plt.plot(false_positives, thresholds, label="Threshold")
     plt.legend(loc="lower right")
     plt.grid()
     plt.savefig("roc")
+
+    strange = (probs[:, 1] > 0.8) & (test_targets == 0)
+    print strange.sum(), "/", len(strange)
+
+    np.savetxt("db/strange.gz", users[strange], fmt="%s")
 
 
 if __name__ == "__main__":
