@@ -14,6 +14,7 @@ import twitterology.features as tf
 
 
 import numpy as np
+np.set_printoptions(precision=2, suppress=True)
 
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_curve, auc
@@ -33,15 +34,67 @@ def print_tweets(tweets):
 
 
 def main():
+    extract_features = tf.ProductDifference(
+        tf.AbsoluteDifference(
+            tf.Product(
+                tf.Median(tf.Length()),
+                tf.Average(tf.Count(tf.NeutralPunctuation())),
+                tf.Average(tf.IsRetweet()),
+                tf.Average(tf.Count(tf.Hashtags())),
+                tf.Average(tf.Count(tf.Mentions())),
+                tf.Average(tf.IncludesLink()),
+                tf.Median(tf.Time()),
+
+                tf.AverageInterval(sampling=0.5),
+                tf.Diversity()
+            )
+        ),
+        tf.JaccardDifference(
+            tf.Product(
+                tf.Counts(tf.Hashtags(), top=4),
+                tf.Counts(tf.Mentions(), top=2),
+                tf.Counts(tf.Words(), top=8)
+            )
+        )
+    )
+
     database, table = argv[1].split(":")
     storage = tw.sources.sqlite(database, table)
 
-    strange = np.loadtxt("db/strange.gz", dtype="string")
-    for user_a, user_b in strange:
-        print_tweets(storage.find(user__id_str=user_a))
-        print "\n/////////\n"
-        print_tweets(storage.find(user__id_str=user_b))
-        print "\n\n!!!!!!!!!!!!!!!!!!!!!!\n\n"
+    users = np.loadtxt("db/users.gz", dtype="string")
+    samples = np.loadtxt("db/samples.gz")
+    probs = np.loadtxt("db/probs.gz")
+
+    count = 0
+    for (user_a, user_b), features, prob in zip(users, samples, probs):
+        if user_a == user_b:
+            continue
+        if prob > 0.99:
+            count += 1
+
+            t_a = list(storage.find(user__id_str=user_a))[::2]
+            t_b = list(storage.find(user__id_str=user_b))[1::2]
+
+            tl_a = extract_features.features(t_a)
+            tl_b = extract_features.features(t_b)
+            tl_x = extract_features(tl_a, tl_b)
+
+            print user_a, user_b
+            print features, "->", prob
+            print "A:", tl_a[-3:]
+            print "B:", tl_b[-3:]
+            print min(t["created_at"] for t in t_a), "--", max(t["created_at"] for t in t_a)
+            print "===="
+            print
+
+            """
+            print "\n!!!!!!!!! {}\n".format(user_a)
+            print_tweets(storage.find(user__id_str=user_a))
+            print "\n///////// {}\n".format(user_b)
+            print_tweets(storage.find(user__id_str=user_b))
+            """
+
+    print count
 
 
 if __name__ == "__main__":

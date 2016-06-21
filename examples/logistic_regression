@@ -26,6 +26,7 @@ def main():
     users = np.loadtxt("db/users.gz", dtype="string")
     samples = np.loadtxt("db/samples.gz")
     targets = np.loadtxt("db/targets.gz")
+    probs = np.ones_like(targets)
 
     splitter = StratifiedKFold(
         targets, n_folds=10,
@@ -39,13 +40,16 @@ def main():
     )
     print roc_aucs, np.average(roc_aucs)
 
-    train_indices, test_indices = next(iter(splitter))
-    train_samples, train_targets = samples[train_indices], targets[train_indices]
-    test_samples, test_targets, test_users = samples[test_indices], targets[test_indices], users[test_indices]
+    for train_indices, test_indices in splitter:
+        train_samples, train_targets, train_users = samples[train_indices], targets[train_indices], users[train_indices]
+        test_samples, test_targets, test_users = samples[test_indices], targets[test_indices], users[test_indices]
 
-    clf.fit(train_samples, train_targets)
-    probs = clf.predict_proba(test_samples)
-    false_positives, true_positives, thresholds = roc_curve(test_targets, probs[:, 1])
+        clf.fit(train_samples, train_targets)
+        test_probs = clf.predict_proba(test_samples)
+
+        probs[test_indices] = test_probs[:, 1]
+
+    false_positives, true_positives, thresholds = roc_curve(test_targets, test_probs[:, 1])
     roc_auc = auc(false_positives, true_positives)
 
     plt.figure(figsize=(7, 7))
@@ -55,10 +59,7 @@ def main():
     plt.grid()
     plt.savefig("roc")
 
-    strange = (probs[:, 1] > 0.8) & (test_targets == 0)
-    print strange.sum(), "/", len(strange)
-
-    np.savetxt("db/strange.gz", test_users[strange], fmt="%s")
+    np.savetxt("db/probs.gz", probs)
 
 
 if __name__ == "__main__":
