@@ -44,17 +44,27 @@ def main():
     estimates = np.load("db/{}/estimates.npy".format(table))
     coef = np.load("db/{}/coef.npy".format(table))
 
+    total = 0
+    count = 0
     for user_a, user_b, proba in estimates:
         proba = float(proba)
-        if proba > 0.94 and user_a != user_b:
+        total += 1
+        if proba > 0.9 and user_a != user_b:
+            count += 1
+
+            print "\n===", count, "===\n"
             print link_to(user_a)
+            """
             print format_sample(samples_a[user_a])
             print
+            """
             print link_to(user_b)
+            """
             print format_sample(samples_b[user_b])
             print
             print MODEL.difference(samples_a[user_a], samples_b[user_b]) * coef
-            print "\n======\n\n\n"
+            """
+    print "flagged:", count, "/", total
 
 
 if __name__ == "__main__":
