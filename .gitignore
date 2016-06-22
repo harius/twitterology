@@ -64,3 +64,6 @@ etc/twitter_api.json
 # Databases
 db/*
 !db/examples.db
+
+# Plots
+plots/*
