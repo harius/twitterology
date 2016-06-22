@@ -27,26 +27,31 @@ def link_to(user_id):
     return "https://twitter.com/intent/user?user_id=" + user_id
 
 
+def format_sample(sample):
+    return "  ".join(
+        "{:.2f}".format(x) if isinstance(x, float)
+        else repr(x).decode("unicode-escape")
+        for x in sample
+    )
+
+
 def main():
-    """
     database, table = argv[1].split(":")
-    storage = tw.sources.sqlite(database, table)
-    """
 
-    samples_a = dict(np.load("db/samples_a.npy"))
-    samples_b = dict(np.load("db/samples_b.npy"))
+    samples_a = dict(np.load("db/{}/samples_a.npy".format(table)))
+    samples_b = dict(np.load("db/{}/samples_b.npy".format(table)))
 
-    estimates = np.load("db/estimates.npy")
-    coef = np.load("db/coef.npy")
+    estimates = np.load("db/{}/estimates.npy".format(table))
+    coef = np.load("db/{}/coef.npy".format(table))
 
     for user_a, user_b, proba in estimates:
         proba = float(proba)
-        if proba > 0.999 and user_a != user_b:
+        if proba > 0.94 and user_a != user_b:
             print link_to(user_a)
-            print samples_a[user_a]
+            print format_sample(samples_a[user_a])
             print
             print link_to(user_b)
-            print samples_b[user_b]
+            print format_sample(samples_b[user_b])
             print
             print MODEL.difference(samples_a[user_a], samples_b[user_b]) * coef
             print "\n======\n\n\n"

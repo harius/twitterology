@@ -46,8 +46,8 @@ def main():
     samples_a = np.array(samples_a)
     samples_b = np.array(samples_b)
 
-    np.save("db/samples_a.npy", samples_a)
-    np.save("db/samples_b.npy", samples_b)
+    np.save("db/{}/samples_a.npy".format(table), samples_a)
+    np.save("db/{}/samples_b.npy".format(table), samples_b)
 
 
 if __name__ == "__main__":

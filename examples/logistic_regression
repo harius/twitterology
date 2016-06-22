@@ -62,7 +62,7 @@ def cross_val_predict_proba(clf, samples, targets, cv):
     return proba
 
 
-def plot_features(samples, targets):
+def plot_features(samples, targets, table):
     rows = (len(MODEL.features.labels) + 1) / 2
 
     fig, axs = plt.subplots(rows, 2, figsize=(7, rows * 1.5))
@@ -85,14 +85,16 @@ def plot_features(samples, targets):
     for ax in axs:
         ax.axis("off")
 
-    plt.savefig("features")
+    plt.savefig("plots/{}/features".format(table))
 
 
 def main():
-    samples_a = np.load("db/samples_a.npy")
-    samples_b = np.load("db/samples_b.npy")
+    database, table = argv[1].split(":")
 
-    samples, pairs = make_samples(samples_a, samples_b, 3.0)
+    samples_a = np.load("db/{}/samples_a.npy".format(table))
+    samples_b = np.load("db/{}/samples_b.npy".format(table))
+
+    samples, pairs = make_samples(samples_a, samples_b, 6.0)
     targets = (pairs[:, 0] == pairs[:, 1])
 
     splitter = StratifiedKFold(
@@ -113,14 +115,14 @@ def main():
     plt.plot(false_positives, true_positives, label="AUC: {}".format(roc_auc))
     plt.legend(loc="lower right")
     plt.grid()
-    plt.savefig("roc")
+    plt.savefig("plots/{}/roc".format(table))
 
     estimates = np.append(pairs, proba.reshape(len(proba), 1), axis=1)
 
-    np.save("db/estimates.npy", estimates)
-    plot_features(samples, targets)
+    np.save("db/{}/estimates.npy".format(table), estimates)
+    plot_features(samples, targets, table)
 
-    np.save("db/coef.npy", clf.coef_[0])
+    np.save("db/{}/coef.npy".format(table), clf.coef_[0])
 
 
 if __name__ == "__main__":
