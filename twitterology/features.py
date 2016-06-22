@@ -85,7 +85,7 @@ class Counts(object):
         self._top = top
         self.labels = ["Множ-во популярных " + self._what.label]
 
-    def __call__(self, tweets):
+    def features(self, tweets):
         counter = Counter()
         for tweet in tweets:
             counter.update(self._what(tweet))
@@ -101,7 +101,7 @@ class Average(object):
         self._measure = measure
         self.labels = ["Средн. " + self._measure.label]
 
-    def __call__(self, tweets):
+    def features(self, tweets):
         if tweets:
             average = np.average([self._measure(tweet) for tweet in tweets])
         else:
@@ -116,7 +116,7 @@ class Median(object):
         self._measure = measure
         self.labels = ["Медиан. " + self._measure.label]
 
-    def __call__(self, tweets):
+    def features(self, tweets):
         if tweets:
             median = np.median([self._measure(tweet) for tweet in tweets])
         else:
@@ -133,7 +133,7 @@ class AverageInterval(object):
     def __init__(self, sampling):
         self.sampling = sampling
 
-    def __call__(self, tweets):
+    def features(self, tweets):
         timestamps = sorted(
             arrow.get(tweet["created_at"], self.date_format)
             for tweet in tweets
@@ -155,7 +155,7 @@ class Diversity(object):
     word = r"\w+"
     labels = ["Повторяемость"]
 
-    def __call__(self, tweets):
+    def features(self, tweets):
         words = [
             word for tweet in tweets
             for word in findall(self.word, tweet["text"], flags=UNICODE)
@@ -173,10 +173,10 @@ class Product(object):
         self.length = sum(component.length for component in args)
         self.labels = [label for component in self.components for label in component.labels]
 
-    def __call__(self, *args):
+    def features(self, tweets):
         features = []
         for component in self.components:
-            features.extend(component(*args))
+            features.extend(component.features(tweets))
         return np.array(features)
 
 
@@ -184,7 +184,7 @@ class AbsoluteDifference(object):
     def __init__(self, features):
         self.features = features
 
-    def __call__(self, one, other):
+    def difference(self, one, other):
         return np.absolute(one - other)
 
 
@@ -194,7 +194,7 @@ class JaccardDifference(object):
     def __init__(self, features):
         self.features = features
 
-    def __call__(self, one, other):
+    def difference(self, one, other):
         count_intersections = self.count(one & other)
 
         count_unions = self.count(one | other)
@@ -210,13 +210,13 @@ class ProductDifference(object):
             *[component.features for component in self._components]
         )
 
-    def __call__(self, one, other):
+    def difference(self, one, other):
         features = []
 
         offset = 0
         for component in self._components:
             length = component.features.length
-            features.extend(component(
+            features.extend(component.difference(
                 one[offset:offset + length],
                 other[offset:offset + length]
             ))

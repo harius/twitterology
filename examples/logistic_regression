@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Usage: examples/logistic_regression examples.db:track_hello
 from sys import argv
-from itertools import groupby, islice
+from itertools import groupby, islice, izip
 from operator import itemgetter
 from random import Random
 
@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 import twitterology as tw
 import twitterology.features as tf
-
+from model import MODEL
 
 import numpy as np
 
@@ -22,44 +22,105 @@ from sklearn.cross_validation import cross_val_score, StratifiedKFold
 from tqdm import tqdm
 
 
+def make_samples(samples_a, samples_b, ratio):
+    samples = []
+    pairs = []
+
+    for (user_a, timeline_a), (user_b, timeline_b) in izip(samples_a, samples_b):
+        assert user_a == user_b
+        samples.append(MODEL.difference(timeline_a, timeline_b))
+        pairs.append([user_a, user_b])
+
+    random = Random(42)
+    more_pairs = int(ratio * len(samples))
+
+    for _ in range(more_pairs):
+        user_a, timeline_a = random.choice(samples_a)
+        user_b, timeline_b = random.choice(samples_b)
+
+        samples.append(MODEL.difference(timeline_a, timeline_b))
+        pairs.append([user_a, user_b])
+
+    samples = np.array(samples)
+    pairs = np.array(pairs)
+
+    return samples, pairs
+
+
+def cross_val_predict_proba(clf, samples, targets, cv):
+    proba = -np.ones_like(targets, dtype="float")
+
+    for train_idx, test_idx in tqdm(cv):
+        train_samples, train_targets = samples[train_idx], targets[train_idx]
+        test_samples, test_targets = samples[test_idx], targets[test_idx]
+
+        clf.fit(train_samples, train_targets)
+
+        test_proba = clf.predict_proba(test_samples)
+        proba[test_idx] = test_proba[:, 1]
+
+    return proba
+
+
+def plot_features(samples, targets):
+    rows = (len(MODEL.features.labels) + 1) / 2
+
+    fig, axs = plt.subplots(rows, 2, figsize=(7, rows * 1.5))
+    fig.subplots_adjust(hspace=0.5, wspace=0.3)
+
+    axs = iter(axs.ravel())
+    for index, (distribution, label, ax) in enumerate(zip(samples.T, MODEL.features.labels, axs), start=1):
+        for target in [False, True]:
+            mask = (targets == target).astype(int)
+            density, edges = np.histogram(distribution, weights=mask, bins=23, density=True)
+
+            ax.plot(edges[1:], density, label=str(target))
+
+        ax.yaxis.set_visible(False)
+        ax.set_ylim([-0.1 * max(density), 1.1 * max(density)])
+        title = ax.set_title(label.decode("utf-8"))
+        title.set_family("serif")
+        title.set_size("small")
+
+    for ax in axs:
+        ax.axis("off")
+
+    plt.savefig("features")
+
+
 def main():
-    users = np.loadtxt("db/users.gz", dtype="string")
-    samples = np.loadtxt("db/samples.gz")
-    targets = np.loadtxt("db/targets.gz")
-    probs = np.ones_like(targets)
+    samples_a = np.load("db/samples_a.npy")
+    samples_b = np.load("db/samples_b.npy")
+
+    samples, pairs = make_samples(samples_a, samples_b, 3.0)
+    targets = (pairs[:, 0] == pairs[:, 1])
 
     splitter = StratifiedKFold(
         targets, n_folds=10,
         random_state=123, shuffle=True
     )
-
     clf = LogisticRegression()
-    roc_aucs = cross_val_score(
+
+    proba = cross_val_predict_proba(
         clf, samples, targets,
-        cv=splitter, scoring="roc_auc"
+        cv=splitter
     )
-    print roc_aucs, np.average(roc_aucs)
 
-    for train_indices, test_indices in splitter:
-        train_samples, train_targets, train_users = samples[train_indices], targets[train_indices], users[train_indices]
-        test_samples, test_targets, test_users = samples[test_indices], targets[test_indices], users[test_indices]
-
-        clf.fit(train_samples, train_targets)
-        test_probs = clf.predict_proba(test_samples)
-
-        probs[test_indices] = test_probs[:, 1]
-
-    false_positives, true_positives, thresholds = roc_curve(test_targets, test_probs[:, 1])
+    false_positives, true_positives, _ = roc_curve(targets, proba)
     roc_auc = auc(false_positives, true_positives)
 
     plt.figure(figsize=(7, 7))
     plt.plot(false_positives, true_positives, label="AUC: {}".format(roc_auc))
-    plt.plot(false_positives, thresholds, label="Threshold")
     plt.legend(loc="lower right")
     plt.grid()
     plt.savefig("roc")
 
-    np.savetxt("db/probs.gz", probs)
+    estimates = np.append(pairs, proba.reshape(len(proba), 1), axis=1)
+
+    np.save("db/estimates.npy", estimates)
+    plot_features(samples, targets)
+
+    np.save("db/coef.npy", clf.coef_[0])
 
 
 if __name__ == "__main__":

@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 import twitterology as tw
 import twitterology.features as tf
-
+from model import MODEL
 
 import numpy as np
 np.set_printoptions(precision=2, suppress=True)
@@ -23,78 +23,33 @@ from sklearn.cross_validation import cross_val_score, StratifiedKFold
 from tqdm import tqdm
 
 
-def print_tweets(tweets):
-    c = 0
-    for tweet in tweets:
-        print tweet["text"].encode("utf-8")
-        c += 1
-        if c > 3:
-            break
-        print "---"
+def link_to(user_id):
+    return "https://twitter.com/intent/user?user_id=" + user_id
 
 
 def main():
-    extract_features = tf.ProductDifference(
-        tf.AbsoluteDifference(
-            tf.Product(
-                tf.Median(tf.Length()),
-                tf.Average(tf.Count(tf.NeutralPunctuation())),
-                tf.Average(tf.IsRetweet()),
-                tf.Average(tf.Count(tf.Hashtags())),
-                tf.Average(tf.Count(tf.Mentions())),
-                tf.Average(tf.IncludesLink()),
-                tf.Median(tf.Time()),
-
-                tf.AverageInterval(sampling=0.5),
-                tf.Diversity()
-            )
-        ),
-        tf.JaccardDifference(
-            tf.Product(
-                tf.Counts(tf.Hashtags(), top=4),
-                tf.Counts(tf.Mentions(), top=2),
-                tf.Counts(tf.Words(), top=8)
-            )
-        )
-    )
-
+    """
     database, table = argv[1].split(":")
     storage = tw.sources.sqlite(database, table)
+    """
 
-    users = np.loadtxt("db/users.gz", dtype="string")
-    samples = np.loadtxt("db/samples.gz")
-    probs = np.loadtxt("db/probs.gz")
+    samples_a = dict(np.load("db/samples_a.npy"))
+    samples_b = dict(np.load("db/samples_b.npy"))
 
-    count = 0
-    for (user_a, user_b), features, prob in zip(users, samples, probs):
-        if user_a == user_b:
-            continue
-        if prob > 0.99:
-            count += 1
+    estimates = np.load("db/estimates.npy")
+    coef = np.load("db/coef.npy")
 
-            t_a = list(storage.find(user__id_str=user_a))[::2]
-            t_b = list(storage.find(user__id_str=user_b))[1::2]
-
-            tl_a = extract_features.features(t_a)
-            tl_b = extract_features.features(t_b)
-            tl_x = extract_features(tl_a, tl_b)
-
-            print user_a, user_b
-            print features, "->", prob
-            print "A:", tl_a[-3:]
-            print "B:", tl_b[-3:]
-            print min(t["created_at"] for t in t_a), "--", max(t["created_at"] for t in t_a)
-            print "===="
+    for user_a, user_b, proba in estimates:
+        proba = float(proba)
+        if proba > 0.999 and user_a != user_b:
+            print link_to(user_a)
+            print samples_a[user_a]
             print
-
-            """
-            print "\n!!!!!!!!! {}\n".format(user_a)
-            print_tweets(storage.find(user__id_str=user_a))
-            print "\n///////// {}\n".format(user_b)
-            print_tweets(storage.find(user__id_str=user_b))
-            """
-
-    print count
+            print link_to(user_b)
+            print samples_b[user_b]
+            print
+            print MODEL.difference(samples_a[user_a], samples_b[user_b]) * coef
+            print "\n======\n\n\n"
 
 
 if __name__ == "__main__":
