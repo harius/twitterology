@@ -19,7 +19,7 @@ MODEL = tf.ProductDifference(
     ),
     tf.JaccardDifference(
         tf.Product(
-            tf.Counts(tf.Hashtags(), top=4),
+            # tf.Counts(tf.Hashtags(), top=4),
             tf.Counts(tf.Mentions(), top=2),
             tf.Counts(tf.Words(), top=8)
         )
