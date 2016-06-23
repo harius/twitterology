@@ -55,9 +55,14 @@ class Mentions(object):
 class Words(object):
     label = "слов"
     _word = r"\w+"
+    _ban = {"RT", "https", "http", "t", "co"}
 
     def __call__(self, tweet):
-        return findall(self._word, tweet["text"], flags=UNICODE)
+        return [
+            word
+            for word in findall(self._word, tweet["text"], flags=UNICODE)
+            if word not in self._ban
+        ]
 
 
 class NeutralPunctuation(object):

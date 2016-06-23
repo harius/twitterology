@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 import twitterology as tw
 import twitterology.features as tf
-from model import MODEL
+from model import MODEL, FULL_MODEL
 
 import numpy as np
 
@@ -33,21 +33,26 @@ def main():
 
     samples_a = []
     samples_b = []
+    samples_f = []
 
     for user_id, timeline in tqdm(timelines, total=user_count):
         timeline = list(timeline)
 
         features_a = MODEL.features.features(timeline[::2])
         features_b = MODEL.features.features(timeline[1::2])
+        features_f = FULL_MODEL.features.features(timeline)
 
         samples_a.append([user_id, features_a])
         samples_b.append([user_id, features_b])
+        samples_f.append([user_id, features_f])
 
     samples_a = np.array(samples_a)
     samples_b = np.array(samples_b)
+    samples_f = np.array(samples_f)
 
     np.save("db/{}/samples_a.npy".format(table), samples_a)
     np.save("db/{}/samples_b.npy".format(table), samples_b)
+    np.save("db/{}/samples_f.npy".format(table), samples_f)
 
 
 if __name__ == "__main__":

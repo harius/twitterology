@@ -9,6 +9,8 @@ import matplotlib
 matplotlib.use("pdf")
 import matplotlib.pyplot as plt
 
+import tabulate
+
 import twitterology as tw
 import twitterology.features as tf
 from model import MODEL
@@ -30,7 +32,7 @@ def link_to(user_id):
 def format_sample(sample):
     return "  ".join(
         "{:.2f}".format(x) if isinstance(x, float)
-        else repr(x).decode("unicode-escape")
+        else repr(x).decode("unicode-escape").encode("utf-8")
         for x in sample
     )
 
@@ -44,15 +46,17 @@ def main():
     estimates = np.load("db/{}/estimates.npy".format(table))
     coef = np.load("db/{}/coef.npy".format(table))
 
+    seen = set()
+
     total = 0
     count = 0
     for user_a, user_b, proba in estimates:
         proba = float(proba)
         total += 1
-        if proba > 0.9 and user_a != user_b:
+        if proba > 0.95 and user_a != user_b and (user_a not in seen or user_b not in seen):
             count += 1
 
-            print "\n===", count, "===\n"
+            print "\n===", count, proba, "===\n"
             print link_to(user_a)
             """
             print format_sample(samples_a[user_a])
@@ -64,7 +68,16 @@ def main():
             print
             print MODEL.difference(samples_a[user_a], samples_b[user_b]) * coef
             """
+            seen.add(user_a)
+            seen.add(user_b)
+            seen = set()
     print "flagged:", count, "/", total
+    print "seen:", len(seen)
+
+    tab = tabulate.tabulate([(f.decode("utf-8"), "{:.2f}".format(c)) for f, c in zip(MODEL.features.labels, coef)],
+                            tablefmt="latex")
+    with open("plots/{}/tab.tex".format(table), "w") as tabfile:
+        tabfile.write(tab.encode("utf-8"))
 
 
 if __name__ == "__main__":
