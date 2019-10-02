@@ -25,7 +25,7 @@ pyOpenSSL==0.15.1
 pyasn1==0.1.9
 pycparser==2.14
 python-editor==0.5
-requests==2.8.1
+requests==2.20.0
 requests-oauthlib==0.5.0
 simplegeneric==0.8.1
 six==1.10.0
